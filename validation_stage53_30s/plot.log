@@ -1,0 +1,6 @@
+liftoff diagnostic: no persistent airborne interval found
+final vertical diagnostic: Down=-0.979437 m, height_above_trim=0.0378099 m, V_Down=-0.000883668 m/s, contacts=3
+validation_stage53_30s/plots/takeoff_states.png
+validation_stage53_30s/plots/takeoff_total_loads.png
+validation_stage53_30s/plots/takeoff_component_loads.png
+validation_stage53_30s/plots/takeoff_ground_contact.png

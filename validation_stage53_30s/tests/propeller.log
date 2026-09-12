@@ -1,0 +1,17 @@
+[PASS] polar interpolation and clamp
+[PASS] analytic blade-element integral
+[PASS] static momentum closure
+[PASS] axial symmetry and torque bookkeeping
+[PASS] installation-frame transform
+[PASS] element-sample sums
+[PASS] P-factor sign against Stevens
+[PASS] aerodynamic pitch-rate damping
+[PASS] gyroscopic and total-moment identities
+[PASS] density scaling
+[PASS] grid convergence
+[PASS] takeoff sweep with explicit numerical guess
+[PASS] common ILoadComponent contract
+[PASS] Stage 3 NavionModel and RK4 integration
+[PASS] disabled model
+[PASS] prescribed rotation-rate scale
+All 16 propeller V1 tests passed.

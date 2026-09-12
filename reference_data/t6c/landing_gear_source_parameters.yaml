@@ -1,0 +1,60 @@
+# Historical SI Landing Gear values from the uploaded standalone T-6C module.
+# Reference only: Stage 5 does not parse this YAML. The explicit T-6C
+# reference factories retain the same values for regression tests.
+
+mass_kg: 2267.965273
+
+# JSBSim negated-Ixz convention:
+# matrix = [[ixx,0,-ixz],[0,iyy,0],[-ixz,0,izz]]
+inertia_kg_m2:
+  ixx: 5716.535216
+  iyy: 10315.062951
+  izz: 14039.494855
+  ixz: -1355.817948
+
+solver_max_iterations: 50
+solver_convergence_tolerance: 1.0e-5
+rolling_friction_factor: 1.0
+static_friction_factor: 1.0
+maximum_strut_force_n: 0.0
+ground_down_position_ned_m: 0.0
+
+gears:
+  - name: NOSE_LG
+    location_from_cg_body_m: { x: 2.844799, y: 0.0, z: 2.032001 }
+    spring_stiffness_n_per_m: 58375.611749
+    damping_coefficient_ns_per_m: 43781.708812
+    static_friction_coefficient: 0.5
+    rolling_friction_coefficient: 0.02
+    maximum_steering_angle_rad: 0.1221730476
+    steering_mode: steered
+    brake_group: none
+    pacejka_stiffness_b: 0.06
+    pacejka_shape_c: 2.8
+    pacejka_curvature_e: 1.03
+
+  - name: LEFT_MLG
+    location_from_cg_body_m: { x: -0.731520, y: -2.067559, z: 2.032001 }
+    spring_stiffness_n_per_m: 72969.514687
+    damping_coefficient_ns_per_m: 116751.223499
+    static_friction_coefficient: 0.5
+    rolling_friction_coefficient: 0.02
+    maximum_steering_angle_rad: 0.0
+    steering_mode: fixed
+    brake_group: left
+    pacejka_stiffness_b: 0.06
+    pacejka_shape_c: 2.8
+    pacejka_curvature_e: 1.03
+
+  - name: RIGHT_MLG
+    location_from_cg_body_m: { x: -0.731520, y: 2.067559, z: 2.032001 }
+    spring_stiffness_n_per_m: 72969.514687
+    damping_coefficient_ns_per_m: 116751.223499
+    static_friction_coefficient: 0.5
+    rolling_friction_coefficient: 0.02
+    maximum_steering_angle_rad: 0.0
+    steering_mode: fixed
+    brake_group: right
+    pacejka_stiffness_b: 0.06
+    pacejka_shape_c: 2.8
+    pacejka_curvature_e: 1.03

@@ -1,0 +1,54 @@
+@startuml
+title Navion Stage 3 - VS_HS and Propeller
+
+interface ILoadComponent {
+  + computeLoad(context) : BodyLoad
+  + name() : string_view
+}
+
+class HorizontalStabilizer {
+  - config
+  - localFlowField
+  + computeLoad(context) : BodyLoad
+  + evaluateDetailed(context)
+}
+
+class VerticalStabilizer {
+  - config
+  - localFlowField
+  + computeLoad(context) : BodyLoad
+  + evaluateDetailed(context)
+}
+
+class PropellerComponent {
+  - model : PropellerModel
+  + computeLoad(context) : BodyLoad
+  + evaluateDetailed(context) : PropellerOutput
+}
+
+class PropellerModel {
+  - parameters
+  + evaluate(input) : PropellerOutput
+  + evaluateDiskAtInflow(...)
+}
+
+class NavionModel {
+  - rigidBody : RigidBody6DOF
+  - components : vector<unique_ptr<ILoadComponent>>
+  + evaluate(...)
+  + evaluateDerivative(...)
+}
+
+class LoadAccumulator
+class RigidBody6DOF
+class RK4Integrator
+
+ILoadComponent <|.. HorizontalStabilizer
+ILoadComponent <|.. VerticalStabilizer
+ILoadComponent <|.. PropellerComponent
+PropellerComponent *-- PropellerModel
+NavionModel o-- ILoadComponent
+NavionModel ..> LoadAccumulator
+NavionModel *-- RigidBody6DOF
+RK4Integrator ..> NavionModel : derivative callback
+@enduml

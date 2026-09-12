@@ -1,0 +1,47 @@
+@startuml
+title One RK4 Outer Step - Stage 4 PGS and Accepted History
+
+participant RK4Integrator as rk4
+participant NavionModel as model
+participant "VS / HS / Propeller" as regular
+participant LandingGearComponent as gear
+participant PGSFrictionSolver as pgs
+participant LoadAccumulator as sum
+participant RigidBody6DOF as body
+
+loop k1, k2, k3, k4 (read accepted history only)
+  rk4 -> model : evaluateDerivative(stageTime, outerDt, stageState, controls, env)
+  activate model
+  create sum
+  model -> sum : construct empty
+  loop ordinary components
+    model -> regular : computeLoad(context)
+    regular --> model : BodyLoad(F_BODY, M_CG_BODY)
+    model -> sum : add(load)
+  end
+  model -> gear : evaluateContacts(context, outerDt)
+  gear --> model : normalLoad + constraints + contacts
+  model -> model : preLoad = sum + normal + gravity
+  model -> gear : solveFriction(contacts, preLoad, context, outerDt)
+  gear -> pgs : solve(global rows, preLoad, state, mass/inertia, outerDt)
+  pgs --> gear : friction load + lambdas + status
+  gear --> model : friction result
+  model -> gear : applyFrictionResult(trial output)
+  model -> sum : add(normal + friction)
+  model -> body : evaluate(stageState, sum.total, gravityNed)
+  body --> model : StateDerivative
+  model --> rk4 : StateDerivative
+  deactivate model
+end
+
+rk4 -> rk4 : combine k1..k4 -> acceptedState
+rk4 --> model : caller invokes commitAcceptedStep(endTime, outerDt, acceptedState, ...)
+activate model
+model -> gear : evaluate contacts + solve/apply PGS at acceptedState
+model -> gear : commitAcceptedStep(accepted contacts, lambdas)
+note right of gear
+  Compression/slip/contact and PGS warm-start
+  history change exactly once per accepted step.
+end note
+deactivate model
+@enduml

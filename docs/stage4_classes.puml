@@ -1,0 +1,43 @@
+@startuml
+title Navion Stage 4 - Two-Phase Ground Contact Architecture
+
+interface ILoadComponent {
+  + computeLoad(context) : BodyLoad
+  + name() : string_view
+}
+
+interface IGroundContactComponent {
+  + evaluateContacts(context, dt)
+  + solveFriction(contacts, preLoad, context, dt)
+  + applyFrictionResult(contacts, friction)
+  + commitAcceptedStep(contacts, friction)
+  + resetHistory()
+}
+
+class HorizontalStabilizer
+class VerticalStabilizer
+class PropellerComponent
+class LandingGearComponent
+class PGSFrictionSolver
+class NavionModel {
+  - loadComponents
+  - groundContactComponent
+  - rigidBody
+  + evaluate(time, dt, state, controls, environment)
+  + commitAcceptedStep(...)
+}
+class LoadAccumulator
+class RigidBody6DOF
+class RK4Integrator
+
+ILoadComponent <|.. HorizontalStabilizer
+ILoadComponent <|.. VerticalStabilizer
+ILoadComponent <|.. PropellerComponent
+IGroundContactComponent <|.. LandingGearComponent
+LandingGearComponent *-- PGSFrictionSolver
+NavionModel o-- ILoadComponent
+NavionModel *-- IGroundContactComponent
+NavionModel ..> LoadAccumulator
+NavionModel *-- RigidBody6DOF
+RK4Integrator ..> NavionModel : derivative + accepted commit
+@enduml

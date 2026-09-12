@@ -1,0 +1,48 @@
+@startuml
+title Navion Stage 5.3 - Full Component OOP Architecture and Diagnostics
+
+interface ILoadComponent {
+  + computeLoad(context) : BodyLoad
+  + name() : string_view
+}
+
+interface IGroundContactComponent {
+  + evaluateContacts(context, dt)
+  + solveFriction(contacts, preLoad, context, dt)
+  + commitAcceptedStep(contacts, friction)
+}
+
+class MainWing
+class FuselageComponent
+class FuselageAerodynamics
+class HorizontalStabilizer
+class VerticalStabilizer
+class PropellerComponent
+class LandingGearComponent
+class PGSFrictionSolver
+class NavionModel
+class LoadAccumulator
+class RigidBody6DOF
+class RK4Integrator
+class GroundStaticTrimSolver
+class ModelEvaluation
+class ComponentLoadReport
+
+ILoadComponent <|.. MainWing
+ILoadComponent <|.. FuselageComponent
+ILoadComponent <|.. HorizontalStabilizer
+ILoadComponent <|.. VerticalStabilizer
+ILoadComponent <|.. PropellerComponent
+FuselageComponent *-- FuselageAerodynamics : scalar kernel
+
+IGroundContactComponent <|.. LandingGearComponent
+LandingGearComponent *-- PGSFrictionSolver
+NavionModel o-- ILoadComponent
+NavionModel *-- IGroundContactComponent
+NavionModel ..> LoadAccumulator
+NavionModel *-- RigidBody6DOF
+NavionModel ..> ComponentLoadReport : records each computed load
+ModelEvaluation o-- ComponentLoadReport
+RK4Integrator ..> NavionModel : stage derivatives + accepted commit
+GroundStaticTrimSolver ..> NavionModel : pre-power equilibrium evaluations
+@enduml

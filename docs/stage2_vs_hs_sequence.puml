@@ -1,0 +1,38 @@
+@startuml
+title One RK4 Stage - Refactored VS_HS
+
+participant RK4Integrator as rk4
+participant NavionModel as model
+participant "HS / VS" as tail
+participant ILocalFlowField as flow
+participant LoadAccumulator as sum
+participant RigidBody6DOF as rigidbody
+
+rk4 -> model : evaluateDerivative(stageTime, stageState, controls, environment)
+activate model
+model -> model : calculateFlightCondition(stageState)
+create sum
+model -> sum : construct empty
+
+loop horizontal and vertical stabilizers
+  model -> tail : computeLoad(EvaluationContext)
+  activate tail
+  opt local-flow provider injected
+    tail -> flow : velocityIncrementBodyMps(context, r_CG_to_AC)
+    flow --> tail : DeltaV_BODY
+  end
+  tail -> tail : V_local = V_CG + omega x r + DeltaV
+  tail -> tail : coefficients, BODY force
+  tail -> tail : M_CG = M_AC + r x F
+  tail --> model : BodyLoad(F_BODY, M_CG_BODY)
+  deactivate tail
+  model -> sum : add(BodyLoad)
+end
+
+model -> sum : total()
+sum --> model : total BodyLoad
+model -> rigidbody : evaluate(stageState, totalLoad, gravityNed)
+rigidbody --> model : StateDerivative
+model --> rk4 : StateDerivative
+deactivate model
+@enduml

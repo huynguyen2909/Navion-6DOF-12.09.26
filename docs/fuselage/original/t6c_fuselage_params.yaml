@@ -1,0 +1,152 @@
+# t6c_fuselage_params.yaml
+#
+# Data-only parameter set for t6c_fuselage.hpp's Geometry/TuningParams (SI
+# units: m, rad). Like t6c_landing_gear_params.yaml, the library itself does
+# no file I/O -- nothing here is parsed by t6c_fuselage.cpp; this file exists
+# so the T-6C's numbers live outside the code, and main.cpp hand-transcribes
+# the same values into C++ struct literals (see MakeT6CGeometry()/
+# MakeT6CTuning() there).
+#
+# Method: F. Nicolosi, P. Della Vecchia, D. Ciliberti, V. Cusati, "Fuselage
+# aerodynamic prediction methods," Aerospace Science and Technology, 55
+# (2016) 332-343 -- see docs/model_formulas.pdf for every formula. Field
+# names below are spelled out in full (not the PDF's one-letter math
+# symbols); each comment says which formula piece it is so the two stay
+# traceable to each other.
+
+# =============================================================================
+# geometry -- fuselage shape
+# =============================================================================
+geometry:
+  # VERIFIED: Wikipedia (en.wikipedia.org/wiki/Beechcraft_T-6_Texan_II,
+  # "Length: 33 ft 4 in") cross-checked against the Pilatus PC-9 (T-6's
+  # structural parent airframe, flugzeuginfo.net: "Length: 10.05-10.175 m")
+  # -- both independent sources agree to within measurement noise.
+  length_m: 10.18                 # total fuselage length (Lf)
+
+  # ESTIMATED -- no manufacturer (Beechcraft/Textron/Pilatus) publishes a
+  # fuselage width/diameter for this aircraft family; confirmed absent even
+  # from the official Pilatus PC-21 technical-data page's "Exterior
+  # Dimensions" list. Value below is an engineering guess from this
+  # aircraft class's typical tandem-cockpit width, NOT a cited source.
+  # fineness_ratio = length/max_diameter = 9.7, inside Nicolosi's
+  # calibrated range (7-12).
+  max_diameter_m: 1.05            # ESTIMATED equivalent max diameter (df)
+
+  # ESTIMATED -- split from length_m using the SAME length ratios as
+  # Nicolosi's own reference fuselage (Table 1: Ln/Lf=0.190, Lc/Lf=0.433,
+  # Lt/Lf=0.377), since no T-6C-specific nose/cabin/tailcone breakdown
+  # exists anywhere.
+  nose_length_m: 1.93              # ESTIMATED (Ln)
+  cabin_length_m: 4.41             # ESTIMATED (Lc)
+  tailcone_length_m: 3.84          # ESTIMATED (Lt)
+  # nose_fineness_ratio = 1.84 (outside Nicolosi's calibrated 1.2-1.7 -- extrapolated)
+  # tailcone_fineness_ratio = 3.65 (outside Nicolosi's calibrated 2.3-3.0 -- extrapolated)
+
+  tailcone_base_diameter_m: 0.0    # ESTIMATED -- T-6C tailcone closes to a
+                                    # point (no visible blunt aft-fuselage
+                                    # cutoff), so base drag is zero (db).
+
+  # ESTIMATED -- no source at all; copied unchanged from Nicolosi's own
+  # reference-fuselage geometry (Table 1) for lack of anything better.
+  tailcone_upsweep_angle_deg: 14.0   # ESTIMATED (theta)
+  windshield_angle_deg: 40.0         # ESTIMATED (psi)
+
+  # VERIFIED -- jsbsim/aircraft/t6texan2/t6texan2.xml <metrics>:
+  #   wingarea = 176 FT2, wingspan = 33.4 FT, chord = 5.27 FT (constant-chord
+  #   wing, so mean aerodynamic chord = chord exactly).
+  wing_area_m2: 16.35               # (Sw)
+  wing_mean_chord_m: 1.606          # (mac / c-bar)
+  wing_span_m: 10.18                # (b)
+
+# =============================================================================
+# tuning -- parametric shape-factor / correction-curve coefficients
+# =============================================================================
+# EVERY field in this section is UNCALIBRATED. None of it comes from CFD --
+# see docs/model_formulas.pdf Sec.3 (drag) and Sec.5-9 (moments) for exactly
+# which trend sentence or anchor equation motivated each default. When real
+# CFD on an actual T-6C fuselage becomes available, replace numbers here
+# (never touch t6c_fuselage.cpp) -- see Sec.11 "Calibration workflow".
+#
+# Naming pattern: "<curve>_anchor" = value AT the reference point below;
+# "<curve>_..._sensitivity" = how fast the curve moves away from that
+# anchor per unit of the named variable (a slope) -- the tunable guess part.
+tuning:
+
+  # Drag itself (Roskam/Kroo skin-friction + base + upsweep, Sec.3 of
+  # model_formulas.pdf) is closed-form and needs no tunable parameters at
+  # all -- this is the only drag-related knob, and it stays 0 unless you
+  # have real windshield-drag data to add.
+  windshield_drag_increment: 0.0   # Roskam Eq.8 term, omitted (needs a
+                                    # graphical chart, no closed form) --
+                                    # hook left here for manual calibration.
+
+  # --- pitching moment CM0/CMalpha (Sec.5-7) ------------------------------
+  # "*_anchor" values ARE real numbers printed in the paper (Eq.13/14, the
+  # reference-fuselage worked example) -- NOT digitized from a chart image.
+  # Every "*_sensitivity" is the uncalibrated trend-guess slope.
+  pitch:
+    # shared reference point -- same reference-fuselage geometry Eq.13/14 use
+    fineness_ratio_ref: 8.7
+    nose_fineness_ratio_ref: 1.6
+    windshield_angle_ref_deg: 40.0
+    tail_fineness_ratio_ref: 2.8
+    upsweep_angle_ref_deg: 14.0
+
+    # CM0_FR(FR) = cm0_fineness_ratio_anchor + cm0_fineness_ratio_sensitivity * (FR - fineness_ratio_ref)
+    cm0_fineness_ratio_anchor: -0.3159    # Eq.13 @ fineness_ratio_ref
+    cm0_fineness_ratio_sensitivity: 0.03  # per unit FR ("CM0 FR increases when FR increases", Sec.5.1)
+
+    # dCM0_nose(FRn,psi) = cm0_nose_correction_anchor
+    #                    + cm0_nose_windshield_angle_sensitivity * (psi - windshield_angle_ref)
+    #                    + cm0_nose_fineness_ratio_sensitivity * (FRn - nose_fineness_ratio_ref)
+    cm0_nose_correction_anchor: 0.0013    # Eq.13 @ nose_fineness_ratio_ref, windshield_angle_ref
+    cm0_nose_windshield_angle_sensitivity_per_rad: 0.01   # ("~15% of CM0_FR", Sec.5.1)
+    cm0_nose_fineness_ratio_sensitivity: 0.01
+
+    # dCM0_tail(FRt,theta) -- same pattern as nose, over tailcone geometry
+    cm0_tail_correction_anchor: 0.0013    # Eq.13 @ tail_fineness_ratio_ref, upsweep_angle_ref
+    cm0_tail_upsweep_angle_sensitivity_per_rad: 0.005     # ("< 10% of CM0_FR", Sec.5.1)
+    cm0_tail_fineness_ratio_sensitivity: 0.005
+
+    # CMalpha_FR(FR) -- same pattern as CM0_FR (units: 1/rad)
+    cmalpha_fineness_ratio_anchor: 0.1815 # Eq.14 @ fineness_ratio_ref
+    cmalpha_fineness_ratio_sensitivity: 0.02
+
+    # dCMalpha_nose(FRn,psi) -- paper: corrections change "~1% or less" with
+    # moment reference point (Sec.5.2) -> deliberately small default slopes
+    cmalpha_nose_correction_anchor: 0.0005    # Eq.14
+    cmalpha_nose_windshield_angle_sensitivity_per_rad: 0.0005
+    cmalpha_nose_fineness_ratio_sensitivity: 0.0005
+
+    # dCMalpha_tail(FRt,theta)
+    cmalpha_tail_correction_anchor: 0.0006    # Eq.14
+    cmalpha_tail_upsweep_angle_sensitivity_per_rad: 0.0005
+    cmalpha_tail_fineness_ratio_sensitivity: 0.0005
+
+  # --- yawing moment CNbeta (Sec.8-9) -----------------------------------
+  # "*_anchor" again real numbers (Eq.16). Paper: only FRn/FRt affect the
+  # nose/tail correction for yaw (no windshield/upsweep-angle dependence
+  # stated, Sec.6).
+  yaw:
+    fineness_ratio_ref: 8.7
+    nose_fineness_ratio_ref: 1.6
+    tail_fineness_ratio_ref: 2.8
+
+    # CNbeta_FR(FR) = cnbeta_fineness_ratio_anchor + cnbeta_fineness_ratio_sensitivity * (FR - fineness_ratio_ref)
+    # SIGN UNCERTAIN: Eq.16 prints +0.1817 (paper's internal sign
+    # convention), but Table 8 reports the aircraft-convention value as
+    # -0.1812 for the SAME reference fuselage, and Figure 14's axis appears
+    # to plot the quantity going more negative as FR increases -- i.e. the
+    # opposite trend direction depending on which convention is in force.
+    # See model_formulas.pdf Sec.8. Verify against real data before trusting.
+    cnbeta_fineness_ratio_anchor: 0.1817      # Eq.16 @ fineness_ratio_ref
+    cnbeta_fineness_ratio_sensitivity: -0.02  # per unit FR -- SIGN UNCERTAIN
+
+    # dCNbeta_nose(FRn) = cnbeta_nose_correction_anchor + cnbeta_nose_fineness_ratio_sensitivity * (FRn - nose_fineness_ratio_ref)
+    cnbeta_nose_correction_anchor: -0.0003    # Eq.16 @ nose_fineness_ratio_ref
+    cnbeta_nose_fineness_ratio_sensitivity: -0.0005
+
+    # dCNbeta_tail(FRt) = cnbeta_tail_correction_anchor + cnbeta_tail_fineness_ratio_sensitivity * (FRt - tail_fineness_ratio_ref)
+    cnbeta_tail_correction_anchor: -0.0002    # Eq.16 @ tail_fineness_ratio_ref
+    cnbeta_tail_fineness_ratio_sensitivity: -0.0005

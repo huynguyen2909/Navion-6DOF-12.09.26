@@ -1,0 +1,46 @@
+@startuml
+title Navion Stage 1 - OOP Class Structure
+
+interface ILoadComponent {
+  + computeLoad(context) : BodyLoad
+  + name() : string_view
+}
+
+class FutureHorizontalTail
+class FutureVerticalTail
+class FuturePropeller
+class FutureLandingGear
+
+ILoadComponent <|.. FutureHorizontalTail
+ILoadComponent <|.. FutureVerticalTail
+ILoadComponent <|.. FuturePropeller
+ILoadComponent <|.. FutureLandingGear
+
+class NavionModel {
+  - rigidBody : RigidBody6DOF
+  - loadComponents : vector<unique_ptr<ILoadComponent>>
+  + evaluateDerivative(...) : StateDerivative
+}
+
+class LoadAccumulator {
+  - total : BodyLoad
+  + add(load)
+  + total() : BodyLoad
+}
+
+class RigidBody6DOF {
+  - massProperties : MassProperties
+  - inverseInertiaBody : Matrix3
+  + evaluate(state, load, gravity) : StateDerivative
+}
+
+class RK4Integrator {
+  + step(t, dt, state, derivativeFunction) : RigidBodyState
+}
+
+NavionModel o-- ILoadComponent
+NavionModel *-- RigidBody6DOF
+NavionModel ..> LoadAccumulator
+RK4Integrator ..> NavionModel : derivative callback
+@enduml
+

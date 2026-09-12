@@ -1,0 +1,55 @@
+@startuml t6c_fuselage_sequence
+
+' Call sequence for t6c_fuselage -- companion to
+' t6c_fuselage_class_diagram.puml (which shows the API shape). "Your Aero
+' Model" (the caller, outside this library) drives every step. Single
+' stateless call per evaluation -- no persistent per-step history, unlike
+' t6c_landing_gear's 4-step friction-solve protocol.
+' Preview in VS Code: open this file, press Alt+D.
+
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+actor "Your Aero Model\n(outside this library)" as Aero
+participant "FuselageModel" as FM
+
+note over FM
+  Stateless: Sfront/Swet/FR/FRn/FRt
+  cached once at construction
+  (Sec.1 of model_formulas.pdf).
+  Update() is a pure function of the
+  AeroState passed in.
+end note
+
+== once, at startup ==
+Aero -> FM : FuselageModel(geometry, tuning)
+activate FM
+FM -> FM : precompute Sfront, Swet(nose/cabin/tail), FR, FRn, FRt
+FM --> Aero
+deactivate FM
+
+== every evaluation ==
+Aero -> FM : ① Update(state)\n(V, rho, mu, mach, alpha, beta)
+activate FM
+FM -> FM : Re, Cf (Eq.2)
+FM -> FM : CDsf, CDbase, CDupsweep (Sec.3, Roskam/Kroo Eq.6,7,9 -- closed-form)
+FM -> FM : CD_fuselage = CDsf + CDbase + CDupsweep + windshield_drag_increment
+FM -> FM : CM0_FR/dNose/dTail -> CM0 (Sec.5, anchored @ Eq.13)
+FM -> FM : CMa_FR/dNose/dTail -> CMalpha (Sec.6, anchored @ Eq.14)
+FM -> FM : CM = CM0 + CMalpha*alpha
+FM -> FM : CNb_FR/dNose/dTail -> CNbeta (Sec.8, anchored @ Eq.16)
+FM -> FM : CN = CNbeta*beta
+FM --> Aero : Output\n(cd_fuselage, cm, cn, ...)
+deactivate FM
+
+Aero -> Aero : ② add cd_fuselage_sw into total CD\n(same axis as CDgear in t6texan2.xml);\nfold cm/cn in, or keep t6texan2.xml's\nown Cmo/Cmalpha/Cnb until CFD-calibrated
+
+note over Aero, FM
+  Drag (Sec.3) is closed-form Roskam/Kroo -- no calibration needed.
+  See model_formulas.pdf Sec.11 ("Calibration workflow") for how to
+  replace the trend-guessed CM0/CMalpha/CNbeta slopes with real numbers
+  once CFD on an actual T-6C fuselage exists -- edit only
+  t6c_fuselage_params.yaml, never this call sequence.
+end note
+
+@enduml

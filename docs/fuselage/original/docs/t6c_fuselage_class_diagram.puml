@@ -1,0 +1,89 @@
+@startuml t6c_fuselage_simple
+
+' Simplified overview of t6c_fuselage.hpp/.cpp: the shape of the API plus
+' the 1-call sequence. "Your Aero Model" is drawn explicitly as the caller
+' so every arrow is an accurate "who calls whom" -- the library's own data
+' types (Geometry, TuningParams, Output) never call anything themselves,
+' they're just data passed into/out of the one real call.
+' Preview in VS Code: open this file, press Alt+D.
+
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+hide empty members
+
+class "Your Aero Model" as YourAero <<caller, outside this library>>
+
+class FuselageModel {
+  +FuselageModel(geometry, tuning)
+  +Update(state) : Output
+}
+
+class Geometry {
+  Lf_m, df_m
+  Ln_m, Lc_m, Lt_m, db_m
+  theta_rad, psi_rad
+  Sw_m2, mac_m, b_m
+}
+
+class TuningParams {
+  windshield_drag_increment
+}
+class "PitchTuning" as PitchT {
+  cm0_fr_slope, dcm0_nose_*, dcm0_tail_*
+  cma_fr_slope, dcma_nose_*, dcma_tail_*
+  <<anchored at Eq.13/14 -- real paper numbers>>
+}
+class "YawTuning" as YawT {
+  cnb_fr_slope, dcnb_nose_*, dcnb_tail_*
+  <<anchored at Eq.16 -- real paper numbers>>
+}
+
+class AeroState {
+  V_mps, rho_kgm3, mu_pas, mach
+  alpha_rad, beta_rad
+}
+
+class Output {
+  .. drag (Roskam/Kroo, closed-form) ..
+  cd_skin_friction, cd_base, cd_upsweep
+  cd_fuselage_sfront, cd_fuselage_sw, drag_n
+  .. pitch (Nicolosi, anchored) ..
+  cm0, cmalpha, cm, pitch_moment_nm
+  .. yaw (Nicolosi, anchored) ..
+  cnbeta, cn, yaw_moment_nm
+}
+
+TuningParams *-- PitchT : pitch
+TuningParams *-- YawT : yaw
+FuselageModel *-- Geometry
+FuselageModel *-- TuningParams
+FuselageModel ..> AeroState : reads (per call)
+FuselageModel ..> Output : returns (per call)
+
+YourAero --> FuselageModel : "construct once:\nFuselageModel(geometry, tuning)"
+YourAero --> FuselageModel : "① Update(state)"
+FuselageModel --> YourAero : returns Output
+
+YourAero ..> YourAero : "② add cd_fuselage_sw into total CD\n(same axis as CDgear);\nfold cm/cn into pitch/yaw moment\n-- or keep using t6texan2.xml's own\nCmo/Cmalpha/Cnb until this is CFD-calibrated"
+
+note right of FuselageModel
+  Sfront/Swet/FR/FRn/FRt precomputed
+  once in the ctor from Geometry --
+  Update() never recomputes them, and
+  holds no other state between calls.
+end note
+
+note bottom of PitchT
+  CM0/CMalpha: anchored at the paper's
+  own printed reference-fuselage
+  numbers (Eq.13/14), slopes are the
+  guess part -- see Sec.5-6.
+end note
+
+note bottom of Output
+  Scalar CD/CM/CN only -- no direction/
+  frame resolution. Caller rotates/
+  relocates into body axes itself.
+end note
+
+@enduml

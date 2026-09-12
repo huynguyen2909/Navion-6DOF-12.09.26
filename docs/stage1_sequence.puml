@@ -1,0 +1,39 @@
+@startuml
+title One RK4 Step - Navion Stage 1 Contract
+
+actor Simulation
+participant RK4Integrator as rk4
+participant NavionModel as navion
+participant "ILoadComponent[*]" as components
+participant LoadAccumulator as accumulator
+participant RigidBody6DOF as rigidbody
+
+Simulation -> rk4 : step(t, dt, state, derivativeFunction)
+activate rk4
+
+loop k1, k2, k3, k4
+    rk4 -> navion : evaluateDerivative(stageTime, stageState, controls, environment)
+    activate navion
+    navion -> navion : calculateFlightCondition()
+    create accumulator
+    navion -> accumulator : construct fresh accumulator
+
+    loop every registered component
+        navion -> components : computeLoad(EvaluationContext)
+        components --> navion : BodyLoad(F_body, M_CG_body)
+        navion -> accumulator : add(BodyLoad)
+    end
+
+    navion -> accumulator : total()
+    accumulator --> navion : totalComponentLoad
+    navion -> rigidbody : evaluate(stageState, totalLoad, gravityNed)
+    rigidbody --> navion : StateDerivative
+    navion --> rk4 : StateDerivative
+    deactivate navion
+end
+
+rk4 -> rk4 : weighted RK4 sum\nnormalize q_nb
+rk4 --> Simulation : state(t + dt)
+deactivate rk4
+@enduml
+

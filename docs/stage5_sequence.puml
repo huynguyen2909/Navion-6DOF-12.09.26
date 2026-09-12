@@ -1,0 +1,42 @@
+@startuml
+title One RK4 Outer Step - Stage 5.3 Full Aircraft, PGS and Load Reports
+
+participant RK4Integrator as rk4
+participant NavionModel as model
+participant "Wing / Fuselage / VS / HS / Propeller" as regular
+participant LandingGearComponent as gear
+participant PGSFrictionSolver as pgs
+participant LoadAccumulator as sum
+participant RigidBody6DOF as body
+
+loop k1, k2, k3, k4 (read accepted gear history only)
+  rk4 -> model : evaluateDerivative(stageTime, outerDt, stageState, controls, env)
+  activate model
+  create sum
+  model -> sum : construct empty
+  loop all ordinary ILoadComponent objects
+    model -> regular : computeLoad(stage context)
+    regular --> model : BodyLoad(F_BODY, M_CG_BODY)
+    model -> sum : add(load)
+    model -> model : append ComponentLoadReport(name, load)
+  end
+  model -> gear : evaluateContacts(context, outerDt)
+  gear --> model : normal load + global constraint rows
+  model -> model : preLoad = regular + normal + gravity
+  model -> gear : solveFriction(...)
+  gear -> pgs : solve(all rows, preLoad, state, mass/inertia, dt)
+  pgs --> gear : friction load + multipliers/status
+  gear --> model : friction result
+  model -> gear : applyFrictionResult(trial diagnostics)
+  model -> sum : add(normal + friction)
+  model -> model : append Landing Gear load report
+  model -> body : evaluate(stageState, sum.total, gravityNed)
+  body --> model : StateDerivative
+  model --> rk4 : StateDerivative
+  deactivate model
+end
+
+rk4 -> rk4 : combine k1..k4 -> acceptedState
+rk4 --> model : caller commitAcceptedStep(endTime, outerDt, acceptedState, ...)
+model -> gear : re-evaluate PGS at accepted state, then commit once
+@enduml

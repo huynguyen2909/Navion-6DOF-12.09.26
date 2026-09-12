@@ -1,0 +1,279 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{mathtools}
+\usepackage{fontspec}
+\setmainfont{Liberation Serif}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black}
+
+\title{\textbf{T6C\_fuselage\_cpp} \\ \Large Fuselage Aerodynamic Coefficients --- Physics Formulas by Computation Flow}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5em}
+
+\noindent This document lists every physics formula in the fuselage
+aerodynamic model, in the exact order they are evaluated:
+\textbf{configuration \& derived geometry} $\to$
+\textbf{flow state} $\to$
+\textbf{drag} $\to$
+\textbf{pitching moment} $\to$
+\textbf{yawing moment} $\to$
+\textbf{calibration workflow for when CFD data becomes available}.
+
+\medskip
+\noindent \textit{Source}: F.~Nicolosi, P.~Della Vecchia, D.~Ciliberti,
+V.~Cusati, ``Fuselage aerodynamic prediction methods,'' \emph{Aerospace
+Science and Technology}, 55 (2016) 332--343.
+
+\medskip
+\noindent \textit{Why drag and the two moments use different formula
+families}: Nicolosi's own method computes $C_D$ from shape factors
+$K_n,K_c,K_t$ and computes $C_{M0},C_{M\alpha},C_{N\beta}$ from an
+$FR$-term plus nose/tail corrections -- but in the paper \textbf{every
+one of those 12 curves is digitized from the authors' own STAR-CCM+ CFD
+sweep} (their Figs.~4--6, 8--16), which this project does not have.
+The two families differ in how much can be salvaged without it:
+\begin{itemize}[nosep]
+\item $K_n,K_c,K_t$: \textbf{no} printed numeric value exists anywhere
+in the paper's text for these three -- chart-only, zero real anchor.
+Rather than invent one from nothing, drag instead uses the closed-form
+formulas the paper itself cites as its semi-empirical comparison
+baseline (Roskam/Kroo, its Eq.~2,6,7,9) -- real, validated, and
+requiring \emph{no} fabricated constant at all (Section~\ref{sec:drag}).
+\item $C_{M0},C_{M\alpha},C_{N\beta}$: each \textbf{does} have one real
+anchor point -- the paper's reference-fuselage worked example is
+printed as actual numbers, not a chart reading (Eq.~13/14/16). No
+independently-validated closed-form alternative exists for these (see
+project README: Roskam's own fuselage-$C_m$ treatment turns out to be
+the same Multhopp lineage, and that lineage's own literature flags it
+as unreliable without a case-specific correction factor). So each curve
+here is a line through that one real point, with an
+\textbf{uncalibrated} trend-guessed slope (Sections~\ref{sec:pitch}--\ref{sec:yaw}).
+\end{itemize}
+
+\section{Configuration load (once, at startup)}
+
+Raw geometry input (SI units: metres, radians):
+\begin{equation}
+L_f,\ d_f,\ L_n,\ L_c,\ L_t,\ d_b,\ \theta,\ \psi,\ S_w,\ \bar{c},\ b
+\end{equation}
+($\bar c$ = wing mean aerodynamic chord, $b$ = wingspan -- used only for
+the optional $S_w$-referenced rescale in Sections~\ref{sec:cdassembly},
+\ref{sec:pitchassembly}, \ref{sec:yawassembly}).
+
+Derived fineness ratios:
+\begin{equation}
+FR = \frac{L_f}{d_f}, \qquad FR_n = \frac{L_n}{d_f}, \qquad FR_t = \frac{L_t}{d_f}
+\end{equation}
+
+Frontal area and wetted area (exact nose-cone / cabin-cylinder /
+tailcone-frustum decomposition -- closed-form solid-of-revolution
+geometry, not an empirical fit):
+\begin{equation}
+S_{\text{front}} = \frac{\pi}{4}d_f^{\,2}
+\end{equation}
+\begin{align}
+S_{\text{wet,nose}} &= \pi\,\frac{d_f}{2}\,\ell_n, & \ell_n &= \sqrt{L_n^2+\left(\tfrac{d_f}{2}\right)^2} \\
+S_{\text{wet,cabin}} &= \pi\,d_f\,L_c \\
+S_{\text{wet,tail}} &= \pi\left(\tfrac{d_f}{2}+\tfrac{d_b}{2}\right)\ell_t, & \ell_t &= \sqrt{L_t^2+\left(\tfrac{d_f-d_b}{2}\right)^2} \\
+S_{\text{wet}} &= S_{\text{wet,nose}}+S_{\text{wet,cabin}}+S_{\text{wet,tail}}
+\end{align}
+
+$FR,FR_n,FR_t,S_{\text{front}},S_{\text{wet},\bullet}$ depend only on
+fixed geometry, so they are computed once in the constructor and
+cached -- \texttt{Update()} never recomputes them.
+
+\section{Flow state (every call)}
+
+\begin{equation}
+q=\tfrac12\rho V^2, \qquad Re=\frac{\rho V L_f}{\mu}
+\end{equation}
+\begin{equation}
+C_{Dfp} = \frac{0.455}{\left(\log_{10}Re\right)^{2.58}\left(1+0.144M^2\right)^{0.65}}
+\qquad\text{(Nicolosi Eq.~2)}
+\end{equation}
+
+\section{Fuselage drag --- Roskam/Kroo closed-form}
+\label{sec:drag}
+
+Skin friction (Eq.~6; the extracted-PDF text read the fineness-ratio
+coefficient as $0.0225$, but that produces $C_{Dsf}$ alone exceeding the
+paper's own reference-case DATCOM total -- $0.0025$ (matching the
+well-known Raymer/Hoerner fuselage form factor $(l/d)/400$) reproduces
+the paper's Table~3 reference value to within 2.4\%, see
+\texttt{main.cpp}'s regression test):
+\begin{equation}
+C_{Dsf} = C_{Dfp}\left[1+\frac{60}{(L_f/d_f)^3}+0.0025\frac{L_f}{d_f}\right]\frac{S_{\text{wet}}}{S_{\text{front}}}
+\end{equation}
+Base drag (Eq.~7, zero if $d_b=0$):
+\begin{equation}
+C_{Dbase} = \frac{0.029(d_b/d_f)^3}{\sqrt{C_{Dsf}\,S_{\text{front}}/S_{\text{wet}}}}\,\frac{S_{\text{wet}}}{S_{\text{front}}}
+\end{equation}
+Upsweep (Eq.~9, Kroo; the extracted-PDF text read the area ratio as
+$S_w/S_{\text{front}}$, but that produces $C_{Dupsweep}$ alone over
+double the paper's own reference-case DATCOM total -- inverting it to
+$S_{\text{front}}/S_w$ reproduces Table~3 to within 2.4\% together with
+the corrected $C_{Dsf}$ above; linearized-centreline approximation for
+$(h/l)_{0.75lt}$, this project's own addition -- Kroo's formula needs
+the tailcone centreline's vertical rise at 75\% of tailcone length,
+non-dimensionalized by tailcone length; approximating the rise as
+linear from cabin to tail tip makes the ratio independent of $L_t$):
+\begin{equation}
+\left(\frac hl\right)_{0.75lt}\approx0.75\tan\theta,
+\qquad
+C_{Dupsweep} = 0.075\,\frac{S_{\text{front}}}{S_w}\,(0.75\tan\theta)
+\end{equation}
+Windshield contribution (Eq.~8) omitted -- needs a graphical Roskam
+chart, no closed form; a calibration hook is added on top instead:
+\begin{equation}
+C_{D,\text{fus}}^{(S_{\text{front}})} = C_{Dsf}+C_{Dbase}+C_{Dupsweep} + \texttt{windshield\_drag\_increment} \quad(\text{default }0)
+\end{equation}
+
+\section{Drag assembly}
+\label{sec:cdassembly}
+
+Rescaled to the wing-area reference used by \texttt{CDo}/\texttt{CDgear}
+in \texttt{t6texan2.xml}:
+\begin{equation}
+C_{D,\text{fus}}^{(S_w)} = C_{D,\text{fus}}^{(S_{\text{front}})}\,\frac{S_{\text{front}}}{S_w},
+\qquad
+D_{\text{fus}} = q\,S_{\text{front}}\,C_{D,\text{fus}}^{(S_{\text{front}})}
+\end{equation}
+
+\section{Zero-angle-of-attack pitching moment $C_{M0}$}
+\label{sec:pitch}
+
+Structure (Nicolosi Eq.~11):
+\begin{equation}
+C_{M0,\text{fus}} = C_{M0,FR}(FR) + \Delta C_{M0,\text{nose}}(FR_n,\psi) + \Delta C_{M0,\text{tail}}(FR_t,\theta)
+\end{equation}
+Each term is a line through the \textbf{one real anchor point the paper
+prints as numbers} (Eq.~13, reference fuselage $FR=8.7$, $FR_n=1.6$,
+$\psi=40^\circ$, $FR_t=2.8$, $\theta=14^\circ$), not a chart reading:
+\begin{align}
+C_{M0,FR}(FR) &= \underbrace{-0.3159}_{\text{Eq.13 anchor}} + s_{FR}\,(FR-8.7) \\
+\Delta C_{M0,\text{nose}}(FR_n,\psi) &= \underbrace{0.0013}_{\text{Eq.13 anchor}} + s_{n,\psi}(\psi-40^\circ) + s_{n,FR_n}(FR_n-1.6) \\
+\Delta C_{M0,\text{tail}}(FR_t,\theta) &= \underbrace{0.0013}_{\text{Eq.13 anchor}} + s_{t,\theta}(\theta-14^\circ) + s_{t,FR_t}(FR_t-2.8)
+\end{align}
+Slopes $s_{FR},s_{n,\psi},s_{n,FR_n},s_{t,\theta},s_{t,FR_t}$ are
+\texttt{TuningParams::pitch} fields, defaulted small (paper: nose
+correction $\sim15\%$ of $C_{M0,FR}$, tail correction $<10\%$,
+Sec.~5.1) and \textbf{uncalibrated}.
+
+\section{Pitching moment derivative $C_{M\alpha}$}
+
+Same structure (Nicolosi Eq.~12), anchored at Eq.~14:
+\begin{align}
+C_{M\alpha,FR}(FR) &= \underbrace{0.1815}_{\text{Eq.14 anchor}} + s_{\alpha,FR}\,(FR-8.7) \\
+\Delta C_{M\alpha,\text{nose}}(FR_n,\psi) &= \underbrace{0.0005}_{\text{Eq.14 anchor}} + \ldots \\
+\Delta C_{M\alpha,\text{tail}}(FR_t,\theta) &= \underbrace{0.0006}_{\text{Eq.14 anchor}} + \ldots
+\end{align}
+(paper: these two corrections change ``about 1\% or less'' with moment
+reference point, Sec.~5.2 -- default slopes accordingly small).
+\begin{equation}
+C_{M\alpha,\text{fus}} = C_{M\alpha,FR}+\Delta C_{M\alpha,\text{nose}}+\Delta C_{M\alpha,\text{tail}}
+\end{equation}
+
+\section{Pitching moment assembly}
+\label{sec:pitchassembly}
+
+\begin{equation}
+C_{M,\text{fus}} = C_{M0,\text{fus}} + C_{M\alpha,\text{fus}}\,\alpha
+\qquad\text{(Nicolosi Eq.~10)}
+\end{equation}
+Reference is $S_{\text{front}}$ and $d_f$ (paper's own convention):
+\begin{equation}
+M_{\text{fus}} = q\,S_{\text{front}}\,d_f\,C_{M,\text{fus}}
+\end{equation}
+Optional rescale to the wing-area/$\bar c$ reference (paper's Tables~6--7 form):
+\begin{equation}
+C_{M,\text{fus}}^{(S_w,\bar c)} = C_{M,\text{fus}}\,\frac{S_{\text{front}}\,d_f}{S_w\,\bar c}
+\end{equation}
+
+\section{Yawing moment derivative $C_{N\beta}$}
+\label{sec:yaw}
+
+Structure (Nicolosi Eq.~15), anchored at Eq.~16 -- note only $FR_n$/$FR_t$
+appear (no $\psi,\theta$ dependence stated for yaw, Sec.~6):
+\begin{align}
+C_{N\beta,FR}(FR) &= \underbrace{0.1817}_{\text{Eq.16 anchor}} + s_{\beta,FR}\,(FR-8.7) \\
+\Delta C_{N\beta,\text{nose}}(FR_n) &= \underbrace{-0.0003}_{\text{Eq.16 anchor}} + s_{\beta n}\,(FR_n-1.6) \\
+\Delta C_{N\beta,\text{tail}}(FR_t) &= \underbrace{-0.0002}_{\text{Eq.16 anchor}} + s_{\beta t}\,(FR_t-2.8)
+\end{align}
+\begin{equation}
+C_{N\beta,\text{fus}} = C_{N\beta,FR}+\Delta C_{N\beta,\text{nose}}+\Delta C_{N\beta,\text{tail}}
+\end{equation}
+
+\section{Yawing moment assembly}
+\label{sec:yawassembly}
+
+\begin{equation}
+C_{N,\text{fus}} = C_{N\beta,\text{fus}}\,\beta,
+\qquad
+N_{\text{fus}} = q\,S_{\text{front}}\,d_f\,C_{N,\text{fus}}
+\end{equation}
+Optional rescale to the wing-area/span reference, and the scaling the
+paper itself specifies if this feeds a whole-aircraft $C_{N\beta}$
+(Sec.~6, before adding the vertical tail's contribution):
+\begin{equation}
+C_{N,\text{fus}}^{(S_w,b)} = C_{N,\text{fus}}\,\frac{S_{\text{front}}\,d_f}{S_w\,b}
+\end{equation}
+
+\section{Direction, deliberately left to the caller}
+$D_{\text{fus}}$ is a scalar magnitude opposing the relative wind;
+$M_{\text{fus}},N_{\text{fus}}$ are scalar moments about the paper's
+reference point ($x/L_f{=}0.50$, $z/d_f{=}0.50$). None of the three are
+resolved into body axes here -- the caller rotates/relocates them the
+same way it treats any other aerodynamic contribution.
+
+\section{Calibration workflow --- filling in real CFD data later}
+\label{sec:calibration}
+
+$C_D$ (Section~\ref{sec:drag}) needs no calibration -- Roskam/Kroo is
+closed-form already. Only $C_{M0},C_{M\alpha},C_{N\beta}$
+(Sections~\ref{sec:pitch}--\ref{sec:yaw}) carry uncalibrated slopes.
+When a real CFD run (STAR-CCM+, OpenFOAM, whatever) on an actual T-6C
+fuselage geometry becomes available, replace them with fitted ones --
+\textbf{never edit the formulas in \texttt{t6c\_fuselage.cpp}, only the
+numbers in \texttt{t6c\_fuselage\_params.yaml}}:
+
+\begin{enumerate}[nosep]
+\item Run at least two geometries through CFD (e.g.\ two different $FR$
+at fixed nose/tail, then two different $FR_n$ at fixed $FR/FR_t$, etc.)
+and extract $C_{M0},C_{M\alpha},C_{N\beta}$ for the whole fuselage at
+each, the same way Nicolosi generated Figs.~8--16 from many CFD cases.
+\item Fit a real slope $s_{FR}$ (etc.) through those points instead of
+the trend-guess default -- with only 2 points this is just
+$(y_2-y_1)/(x_2-x_1)$; with more, a least-squares line.
+\item With $\geq3$--4 real data points per curve, consider replacing
+the linear trend-guess with the generic
+\texttt{ChartTable1D}/\texttt{ChartTable2D} piecewise-linear
+interpolation described as future work in the project README, instead
+of the fixed linear form used here.
+\item Update \texttt{t6c\_fuselage\_params.yaml} only; re-run
+\texttt{main.cpp}'s regression test to confirm the new numbers still
+reproduce whatever CFD points were used to fit them.
+\end{enumerate}
+
+\bigskip
+\noindent\textbf{Call graph, one call per evaluation} (no persistent
+state):
+\begin{quote}
+\texttt{FuselageModel::FuselageModel(geometry, tuning)} --- Section~1,
+once, at construction\\
+\texttt{FuselageModel::Update(state)} --- Sections~2--9, every call,
+pure function of \texttt{state} (which carries $\alpha,\beta$ in
+addition to $V,\rho,\mu,M$) and the cached Section~1 geometry
+\end{quote}
+
+\end{document}

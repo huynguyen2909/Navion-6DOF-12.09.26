@@ -1,0 +1,46 @@
+@startuml
+title One RK4 Stage - Navion Stage 3
+
+participant RK4Integrator as rk4
+participant NavionModel as model
+participant "HS / VS" as tails
+participant PropellerComponent as prop
+participant PropellerModel as bemt
+participant LoadAccumulator as sum
+participant RigidBody6DOF as rigidbody
+
+rk4 -> model : evaluateDerivative(stageTime, stageState, controls, environment)
+activate model
+model -> model : calculateFlightCondition(stageState)
+create sum
+model -> sum : construct empty
+
+loop horizontal and vertical stabilizer
+  model -> tails : computeLoad(context)
+  tails -> tails : local flow, coefficients, F_BODY, M_CG_BODY
+  tails --> model : BodyLoad
+  model -> sum : add(BodyLoad)
+end
+
+model -> prop : computeLoad(context)
+activate prop
+prop -> prop : map EvaluationContext to RuntimeInput
+prop -> bemt : evaluate(input, configured initialGuess)
+activate bemt
+bemt -> bemt : hub kinematics
+bemt -> bemt : bracket and solve algebraic inflow
+bemt -> bemt : integrate disk forces and moments
+bemt --> prop : PropellerOutput
+deactivate bemt
+prop -> prop : validate convergence and map to BodyLoad
+prop --> model : BodyLoad(F_BODY, M_CG_BODY)
+deactivate prop
+model -> sum : add(BodyLoad)
+
+model -> sum : total()
+sum --> model : total component load
+model -> rigidbody : evaluate(stageState, totalLoad, gravityNed)
+rigidbody --> model : StateDerivative
+model --> rk4 : StateDerivative
+deactivate model
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title Navion Stage 2 - VS_HS Integration
+
+interface ILoadComponent {
+  + computeLoad(context) : BodyLoad
+  + name() : string_view
+}
+
+interface ILocalFlowField {
+  + velocityIncrementBodyMps(context, position) : Vec3
+}
+
+class HorizontalStabilizer {
+  - config
+  - localFlowField
+  + computeLoad(context) : BodyLoad
+  + evaluateDetailed(context) : HorizontalStabilizerEvaluation
+}
+
+class VerticalStabilizer {
+  - config
+  - localFlowField
+  + computeLoad(context) : BodyLoad
+  + evaluateDetailed(context) : VerticalStabilizerEvaluation
+}
+
+class NavionModel {
+  - rigidBody : RigidBody6DOF
+  - components : vector<unique_ptr<ILoadComponent>>
+  + evaluate(...)
+  + evaluateDerivative(...)
+}
+
+class LoadAccumulator
+class RigidBody6DOF
+class RK4Integrator
+
+ILoadComponent <|.. HorizontalStabilizer
+ILoadComponent <|.. VerticalStabilizer
+HorizontalStabilizer o-- ILocalFlowField : optional
+VerticalStabilizer o-- ILocalFlowField : optional
+NavionModel o-- ILoadComponent
+NavionModel ..> LoadAccumulator
+NavionModel *-- RigidBody6DOF
+RK4Integrator ..> NavionModel : derivative callback
+@enduml

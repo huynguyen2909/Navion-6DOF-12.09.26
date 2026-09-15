@@ -940,7 +940,7 @@ tích phân ra chính `V(t)`. Bài chạy cũng chưa có governor; `Omega` và 
 
 ## 12. So sánh cấu trúc với mã UH-1
 
-### 12.1 Phần thực sự giống
+### 12.1 Phần giống
 
 ```mermaid
 flowchart TD

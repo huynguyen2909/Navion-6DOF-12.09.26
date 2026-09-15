@@ -89,8 +89,8 @@ ProvisionalNavionConfig makeProvisionalNavionConfig()
 {
     ProvisionalNavionConfig config;
     config.massProperties = {
-        1250.0,
-        Matrix3::diagonal(5000.0, 10000.0, 12000.0)
+        1246.32,
+        Matrix3::diagonal(1420.9, 4067.45, 5328.36)
     };
     config.mainWing = MainWingConfig{};
     config.horizontalStabilizer = makeProvisionalHorizontalStabilizer();

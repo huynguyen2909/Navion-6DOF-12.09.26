@@ -91,11 +91,13 @@ có số dòng HPP/CPP tương ứng ở tài liệu này.
 `PropellerModel` không tích phân trạng thái máy bay. Nó chỉ ánh xạ điều kiện
 hiện tại sang tải:
 
-\[
-(\mathbf V_{CG/a}^b,\boldsymbol\omega^b,\rho,a)
-\longmapsto
-(\mathbf F_{prop}^b,\mathbf M_{prop,CG}^b).
-\]
+```text
+(V_CG/a^b, omega^b, rho, a) -> (F_prop^b, M_prop,CG^b)
+```
+
+Quy ước công thức văn bản thuần trong tài liệu: `*` là phép nhân, `/` là phép
+chia, `^` là lũy thừa hoặc ký hiệu hệ trục, `cross(a, b)` là tích có hướng,
+`dot(a, b)` là tích vô hướng và `sum_(j,k)` là phép lấy tổng theo `j`, `k`.
 
 `lambdaInduced` là hidden variable đại số của phép ánh xạ này. Stage 3 giải lại
 biến này trong từng derivative evaluation với `initialGuess` trong cấu hình;
@@ -267,10 +269,13 @@ chuẩn có determinant `+1`.
 
 Các đại lượng dẫn xuất không được nạp độc lập:
 
-\[
-D=2R,\quad A=\pi R^2,\quad V_{tip}=\Omega R,\quad
-n=\frac{\Omega}{2\pi},\quad RPM=60n.
-\]
+```text
+D = 2 * R
+A = pi * R^2
+V_tip = Omega * R
+n = Omega / (2 * pi)
+RPM = 60 * n
+```
 
 ### 4.2 Mỗi `BladeStation`
 
@@ -282,11 +287,10 @@ n=\frac{\Omega}{2\pi},\quad RPM=60n.
 
 Factory hiện tại tạo twist theo constant-geometric-pitch helix:
 
-\[
-\beta(x)=\tan^{-1}\left(
-\frac{x_{ref}\tan\beta_{ref}}{x}
-\right),\qquad x=\frac rR,
-\]
+```text
+beta(x) = atan((x_ref * tan(beta_ref)) / x)
+x = r / R
+```
 
 với `x_ref=30/42` và `beta_ref=0.27 rad`. Đây là placeholder; không phải
 `theta_75` và không phải governor schedule.
@@ -369,26 +373,25 @@ Hai đối số runtime ngoài struct:
 
 ### 5.2 Hub kinematics và các tỷ số
 
-\[
-\mathbf V_h^b=\mathbf V_{CG/a}^b+
-\boldsymbol\omega^b\times\mathbf r_{h/CG}^b,
-\]
+```text
+V_h^b = V_CG/a^b + cross(omega^b, r_h/CG^b)
+```
 
-\[
-\mathbf V_h^p=C_{p\leftarrow b}\mathbf V_h^b,\qquad
-\boldsymbol\omega^p=C_{p\leftarrow b}\boldsymbol\omega^b.
-\]
+```text
+V_h^p = C_p<-b * V_h^b
+omega^p = C_p<-b * omega^b
+```
 
-\[
-\lambda_0=\frac{V_{h,x}^p}{\Omega R},\qquad
-\mu_y=\frac{V_{h,y}^p}{\Omega R},\qquad
-\mu_z=\frac{V_{h,z}^p}{\Omega R},
-\]
+```text
+lambda_0 = V_h,x^p / (Omega * R)
+mu_y = V_h,y^p / (Omega * R)
+mu_z = V_h,z^p / (Omega * R)
+```
 
-\[
-\mu=\sqrt{\mu_y^2+\mu_z^2},\qquad
-J=\frac{V_{h,x}^p}{nD}.
-\]
+```text
+mu = sqrt(mu_y^2 + mu_z^2)
+J = V_h,x^p / (n * D)
+```
 
 `J` chỉ là diagnostic. Momentum residual dùng `lambda_0`, `mu` và
 `lambda_i`; BEMT dùng trực tiếp toàn vector `V_h^p`, nên vẫn giữ hướng của
@@ -432,9 +435,9 @@ flowchart TD
 BEMT cần `lambda_i` để biết local inflow và angle of attack; momentum theory
 cần thrust từ BEMT để biết `lambda_i`. Do đó hai khối không chạy độc lập:
 
-\[
-T_{BE}(\lambda_i)=T_{MT}(\lambda_i).
-\]
+```text
+T_BE(lambda_i) = T_MT(lambda_i)
+```
 
 Trong V1 chỉ axial thrust coefficient tham gia scalar closure. Torque, force
 ngang, P-factor moment và gyro moment không tạo thêm residual.
@@ -492,121 +495,117 @@ flowchart TD
 
 Midpoint quadrature:
 
-\[
-\psi_j=2\pi\frac{j+1/2}{N_\psi},\qquad
-r_k=r_0+(k+1/2)\Delta r,
-\]
+```text
+psi_j = 2 * pi * (j + 1/2) / N_psi
+r_k = r_0 + (k + 1/2) * Delta_r
+```
 
-\[
-r_0=R\,x_{cutout},\qquad
-\Delta r=\frac{R-r_0}{N_r}.
-\]
+```text
+r_0 = R * x_cutout
+Delta_r = (R - r_0) / N_r
+```
 
-\[
-\mathbf e_r^p=(0,\cos\psi,\sin\psi),\qquad
-\mathbf e_t^p=s_\Omega(\mathbf e_x^p\times\mathbf e_r^p),
-\]
+```text
+e_r^p = (0, cos(psi), sin(psi))
+e_t^p = s_Omega * cross(e_x^p, e_r^p)
+```
 
-\[
-\mathbf r_e^p=r\mathbf e_r^p.
-\]
+```text
+r_e^p = r * e_r^p
+```
 
 ### 7.2 Local velocity
 
-\[
-v_i=\lambda_i\Omega R,
-\]
+```text
+v_i = lambda_i * Omega * R
+```
 
-\[
-\mathbf U_e^p=
-\mathbf V_h^p+
-\boldsymbol\omega^p\times\mathbf r_e^p+
-\Omega r\mathbf e_t^p+
-v_i\mathbf e_x^p.
-\]
+```text
+U_e^p = V_h^p
+        + cross(omega^p, r_e^p)
+        + Omega * r * e_t^p
+        + v_i * e_x^p
+```
 
 Các hạng có ý nghĩa lần lượt là hub translation, body rotation tại element,
 blade rotation và uniform induced velocity. V1 bỏ radial velocity trong polar:
 
-\[
-U_a=\mathbf U_e^p\cdot\mathbf e_x^p,\qquad
-U_t=\mathbf U_e^p\cdot\mathbf e_t^p.
-\]
+```text
+U_a = dot(U_e^p, e_x^p)
+U_t = dot(U_e^p, e_t^p)
+```
 
 `U_t <= 0` chỉ tăng `reverseTangentialFlowCount`; V1 vẫn tiếp tục tính bằng
 công thức 2-D và vì vậy kết quả reverse flow không được coi là tin cậy.
 
 ### 7.3 Section aerodynamics
 
-\[
-W^2=U_a^2+U_t^2,\qquad
-\phi=\operatorname{atan2}(U_a,U_t),\qquad
-\alpha=\beta(r)-\phi.
-\]
+```text
+W^2 = U_a^2 + U_t^2
+phi = atan2(U_a, U_t)
+alpha = beta(r) - phi
+```
 
-\[
-L'=\frac12\rho W^2c(r)C_l(\alpha),\qquad
-D'=\frac12\rho W^2c(r)C_d(\alpha).
-\]
+```text
+L' = 0.5 * rho * W^2 * c(r) * C_l(alpha)
+D' = 0.5 * rho * W^2 * c(r) * C_d(alpha)
+```
 
 Phân giải lực chính xác, không dùng xấp xỉ góc inflow nhỏ:
 
-\[
-F_x'=L'\cos\phi-D'\sin\phi,
-\]
+```text
+F_x' = L' * cos(phi) - D' * sin(phi)
+```
 
-\[
-F_t'=-L'\sin\phi-D'\cos\phi.
-\]
+```text
+F_t' = -L' * sin(phi) - D' * cos(phi)
+```
 
-\[
-\mathbf F'=F_x'\mathbf e_x^p+F_t'\mathbf e_t^p.
-\]
+```text
+F' = F_x' * e_x^p + F_t' * e_t^p
+```
 
 ### 7.4 Disk-mean integration
 
 Vì code lấy midpoint average theo azimuth, weight của mỗi cell là:
 
-\[
-w_{cell}=\Delta r\frac{B}{N_\psi}.
-\]
+```text
+w_cell = Delta_r * B / N_psi
+```
 
-\[
-\Delta\overline{\mathbf F}_{jk}^p=\mathbf F'_{jk}w_{cell},\qquad
-\Delta\overline{\mathbf M}_{h,jk}^p=
-\mathbf r_{e,jk}^p\times\Delta\overline{\mathbf F}_{jk}^p.
-\]
+```text
+Delta_Fbar_jk^p = F'_jk * w_cell
+Delta_Mbar_h,jk^p = cross(r_e,jk^p, Delta_Fbar_jk^p)
+```
 
-\[
-\mathbf F_h^p=\sum_{j,k}\Delta\overline{\mathbf F}_{jk}^p,
-\qquad
-\mathbf M_{h,aero}^p=
-\sum_{j,k}\Delta\overline{\mathbf M}_{h,jk}^p.
-\]
+```text
+F_h^p = sum_(j,k)[Delta_Fbar_jk^p]
+M_h,aero^p = sum_(j,k)[Delta_Mbar_h,jk^p]
+```
 
 Như vậy `aerodynamicMomentAtHub` đã chứa shaft reaction torque và hub bending
 moments. Không được cộng một reaction torque độc lập lần thứ hai.
 
 ### 7.5 Các tải và coefficient được tạo sau tích phân
 
-\[
-T=F_{h,x}^p,\qquad
-Q_{required}=-s_\Omega M_{h,x}^p,\qquad
-P_{required}=Q_{required}\Omega.
-\]
+```text
+T = F_h,x^p
+Q_required = -s_Omega * M_h,x^p
+P_required = Q_required * Omega
+```
 
 Momentum residual dùng rotor normalization:
 
-\[
-C_{T,r}^{BE}=\frac{T}{\rho A(\Omega R)^2}.
-\]
+```text
+C_T,r^BE = T / (rho * A * (Omega * R)^2)
+```
 
 Propeller normalization chỉ dùng diagnostic/validation:
 
-\[
-C_{T,p}=\frac{T}{\rho n^2D^4},\qquad
-C_{Q,p}=\frac{Q}{\rho n^2D^5}.
-\]
+```text
+C_T,p = T / (rho * n^2 * D^4)
+C_Q,p = Q_required / (rho * n^2 * D^5)
+```
 
 Không được trộn `thrustCoefficientRotor` với `thrustCoefficientPropeller` vì
 chúng có reference khác nhau.
@@ -626,22 +625,21 @@ chúng có reference khác nhau.
 
 Với mỗi `lambda_i` thử, `evaluateResidual()` gọi toàn bộ BEMT rồi tính:
 
-\[
-C_{T,r}^{MT}=2\lambda_i
-\sqrt{\mu^2+(\lambda_0+\lambda_i)^2},
-\]
+```text
+C_T,r^MT = 2 * lambda_i * sqrt(mu^2 + (lambda_0 + lambda_i)^2)
+```
 
-\[
-R_\lambda(\lambda_i)=C_{T,r}^{BE}(\lambda_i)-C_{T,r}^{MT}(\lambda_i).
-\]
+```text
+R_lambda(lambda_i) = C_T,r^BE(lambda_i) - C_T,r^MT(lambda_i)
+```
 
 Ở static axial condition:
 
-\[
-\lambda_0=0,\quad\mu=0
-\quad\Rightarrow\quad
-C_{T,r}=2\lambda_i^2.
-\]
+```text
+lambda_0 = 0
+mu = 0
+=> C_T,r = 2 * lambda_i^2
+```
 
 ### 8.2 Bracket scan + safeguarded Newton/bisection
 
@@ -698,22 +696,21 @@ flowchart TD
 
 Đạo hàm số được tính bởi:
 
-\[
-h=\texttt{derivativeStep}\max(1,|\lambda_i|),
-\]
+```text
+h = derivativeStep * max(1, abs(lambda_i))
+```
 
-\[
-R'_\lambda\approx
-\frac{R(\lambda_{high})-R(\lambda_{low})}
-{\lambda_{high}-\lambda_{low}},
-\]
+```text
+R'_lambda ~= (R(lambda_high) - R(lambda_low))
+             / (lambda_high - lambda_low)
+```
 
 trong đó hai điểm đạo hàm bị giới hạn trong `[lambdaMinimum,
 lambdaMaximum]`. Newton proposal là:
 
-\[
-\lambda_{new}=\lambda_i-\frac{R_\lambda}{R'_\lambda}.
-\]
+```text
+lambda_new = lambda_i - R_lambda / R'_lambda
+```
 
 Nếu đạo hàm không hữu hạn/quá nhỏ hoặc proposal ra ngoài bracket, code thay nó
 bằng midpoint bisection. Solver trả rõ một trong ba trạng thái:
@@ -765,49 +762,43 @@ flowchart TD
 | G–H — angular momentum và gyro reaction | `rotationSign`, inertia và output: [HPP 77–80, 212](https://github.com/huynguyen2909/Navion-6DOF-12.09.26/blob/f9e131c97efc18d7df9f5d720dcfdaeeabbc8580/include/navion/components/propeller/PropellerModel.hpp#L77-L80) | [CPP 766–774](https://github.com/huynguyen2909/Navion-6DOF-12.09.26/blob/f9e131c97efc18d7df9f5d720dcfdaeeabbc8580/src/components/propeller/PropellerModel.cpp#L766-L774) |
 | I–J — total moment quanh CG và `PropellerOutput` | [HPP 198–214](https://github.com/huynguyen2909/Navion-6DOF-12.09.26/blob/f9e131c97efc18d7df9f5d720dcfdaeeabbc8580/include/navion/components/propeller/PropellerModel.hpp#L198-L214) | [CPP 775–780](https://github.com/huynguyen2909/Navion-6DOF-12.09.26/blob/f9e131c97efc18d7df9f5d720dcfdaeeabbc8580/src/components/propeller/PropellerModel.cpp#L775-L780) |
 
-\[
-\mathbf F_{prop}^b=C_{b\leftarrow p}\mathbf F_h^p,
-\]
+```text
+F_prop^b = C_b<-p * F_h^p
+```
 
-\[
-\mathbf M_{h,aero}^b=C_{b\leftarrow p}\mathbf M_{h,aero}^p.
-\]
+```text
+M_h,aero^b = C_b<-p * M_h,aero^p
+```
 
 Với shaft unit vector trong body:
 
-\[
-\mathbf e_s^b=C_{b\leftarrow p}(1,0,0),
-\]
+```text
+e_s^b = C_b<-p * (1, 0, 0)
+```
 
-\[
-\mathbf M_{reaction}^b=
-(\mathbf M_{h,aero}^b\cdot\mathbf e_s^b)\mathbf e_s^b,
-\]
+```text
+M_reaction^b = dot(M_h,aero^b, e_s^b) * e_s^b
+```
 
-\[
-\mathbf M_{bend}^b=\mathbf M_{h,aero}^b-\mathbf M_{reaction}^b.
-\]
+```text
+M_bend^b = M_h,aero^b - M_reaction^b
+```
 
 Hai đại lượng trên chỉ là decomposition của cùng hub moment. Tổng moment không
 cộng chúng riêng lẻ:
 
-\[
-\mathbf M_{arm}^b=\mathbf r_{h/CG}^b\times\mathbf F_{prop}^b,
-\]
+```text
+M_arm^b = cross(r_h/CG^b, F_prop^b)
+```
 
-\[
-\mathbf H_{prop}^b=s_\Omega I_{spin}\Omega\mathbf e_s^b,
-\qquad
-\mathbf M_{gyro}^b=-\boldsymbol\omega^b\times\mathbf H_{prop}^b,
-\]
+```text
+H_prop^b = s_Omega * I_spin * Omega * e_s^b
+M_gyro^b = -cross(omega^b, H_prop^b)
+```
 
-\[
-\boxed{
-\mathbf M_{prop,CG}^b=
-\mathbf M_{h,aero}^b+
-\mathbf M_{arm}^b+
-\mathbf M_{gyro}^b}
-\]
+```text
+M_prop,CG^b = M_h,aero^b + M_arm^b + M_gyro^b
+```
 
 ---
 
@@ -937,9 +928,9 @@ Các tham số của **scenario demo**, không phải tham số nội tại BEMT
 
 Speed history bị áp đặt:
 
-\[
-V(t)=29.0576\frac{t}{20}\ \text{m/s},\qquad 0\le t\le20\ \text{s}.
-\]
+```text
+V(t) = 29.0576 * t / 20 m/s, for 0 <= t <= 20 s
+```
 
 Đây chưa phải ground-roll dynamics: thrust của propeller không được dùng để
 tích phân ra chính `V(t)`. Bài chạy cũng chưa có governor; `Omega` và toàn bộ
@@ -1048,11 +1039,10 @@ và polar/geometry placeholder được ghi rõ ở
 Nếu thêm constant-speed governor, không được chỉ thay `pitchRad` sau khi BEMT đã
 chạy. `beta` và `lambda_i` sẽ liên kết qua hai closure, tối thiểu:
 
-\[
-R_\lambda(\lambda_i,\beta)=0,
-\qquad
-R_\beta(\lambda_i,\beta)=Q_{prop}-Q_{engine}=0,
-\]
+```text
+R_lambda(lambda_i, beta) = 0
+R_beta(lambda_i, beta) = Q_prop - Q_engine = 0
+```
 
 hoặc phải tích phân shaft dynamics khi propeller chạm pitch stop. Đây là phạm vi
 phiên bản sau, không phải hành vi của code được mô tả trong tài liệu này.

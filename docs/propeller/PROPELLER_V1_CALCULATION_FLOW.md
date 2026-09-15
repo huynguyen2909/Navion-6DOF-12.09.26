@@ -109,29 +109,29 @@ nó không phải state dynamic inflow và không được giữ giữa các sta
 
 ```mermaid
 flowchart TD
-    A["EvaluationContext của RK4 stage hiện tại"]
-    B["Ánh xạ sang RuntimeInput kernel"]
-    C["Bắt đầu tính tải propeller với initialGuess cấu hình"]
-    D["Kiểm tra dữ liệu; tính vận tốc và tốc độ góc tại tâm propeller"]
-    E{"Propeller có được bật?"}
-    F["Đặt lực và moment bằng zero; bỏ qua BEMT và inflow"]
-    G["Tính sai số cân bằng tại lambda_min và lambda_max; nếu cần thì quét các lambda_i ở giữa"]
-    G2{"Đã tìm được hai lambda_i có sai số trái dấu?"}
-    H["Chọn một giá trị lambda_i thử"]
-    I["Chạy BEMT; tính hệ số lực đẩy CT_r BE và lực/moment toàn đĩa"]
-    J["Dùng momentum theory để tính hệ số lực đẩy CT_r MT"]
-    K["Tính sai số cân bằng: R_lambda = CT_r BE - CT_r MT"]
-    L{"Độ lớn sai số cân bằng đã đủ nhỏ?"}
-    M["Tính lambda_i mới bằng Newton; nếu ra ngoài khoảng chứa nghiệm thì lấy trung điểm"]
-    N{"Còn lượt lặp cho phép?"}
-    O["Báo lỗi: không tìm được khoảng chứa nghiệm"]
-    O2["Báo lỗi: đã dùng hết số lượt lặp"]
-    P["Giữ tải tại lambda_i cuối; ghi trạng thái hội tụ và số liệu kiểm tra"]
-    Q["Đổi lực/moment sang hệ body; quy moment về CG và cộng moment con quay"]
-    R["PropellerOutput: tải chi tiết và diagnostics"]
-    S{"Inflow hội tụ?"}
-    T["Trả BodyLoad cho LoadAccumulator"]
-    U["computeLoad ném runtime_error; không đưa candidate lỗi vào 6-DOF"]
+    A["A: EvaluationContext của RK4 stage hiện tại"]
+    B["B: Ánh xạ sang RuntimeInput kernel"]
+    C["C: Bắt đầu tính tải propeller với initialGuess cấu hình"]
+    D["D: Kiểm tra dữ liệu; tính vận tốc và tốc độ góc tại tâm propeller"]
+    E{"E: Propeller có được bật?"}
+    F["F: Đặt lực và moment bằng zero; bỏ qua BEMT và inflow"]
+    G["G: Tính sai số cân bằng tại lambda_min và lambda_max; nếu cần thì quét các lambda_i ở giữa"]
+    G2{"G2: Đã tìm được hai lambda_i có sai số trái dấu?"}
+    H["H: Chọn một giá trị lambda_i thử"]
+    I["I: Chạy BEMT; tính hệ số lực đẩy CT_r BE và lực/moment toàn đĩa"]
+    J["J: Dùng momentum theory để tính hệ số lực đẩy CT_r MT"]
+    K["K: Tính sai số cân bằng: R_lambda = CT_r BE - CT_r MT"]
+    L{"L: Độ lớn sai số cân bằng đã đủ nhỏ?"}
+    M["M: Tính lambda_i mới bằng Newton; nếu ra ngoài khoảng chứa nghiệm thì lấy trung điểm"]
+    N{"N: Còn lượt lặp cho phép?"}
+    O["O: Báo lỗi: không tìm được khoảng chứa nghiệm"]
+    O2["O2: Báo lỗi: đã dùng hết số lượt lặp"]
+    P["P: Giữ tải tại lambda_i cuối; ghi trạng thái hội tụ và số liệu kiểm tra"]
+    Q["Q: Đổi lực/moment sang hệ body; quy moment về CG và cộng moment con quay"]
+    R["R: PropellerOutput: tải chi tiết và diagnostics"]
+    S{"S: Inflow hội tụ?"}
+    T["T: Trả BodyLoad cho LoadAccumulator"]
+    U["U: computeLoad ném runtime_error; không đưa candidate lỗi vào 6-DOF"]
 
     A --> B --> C
     C --> D --> E
@@ -168,7 +168,7 @@ flowchart TD
 
 ### 3.1 Giải nghĩa các khối chính trong sơ đồ
 
-| Tên khối dễ đọc | Phép tính thực sự và mục đích |
+| Tên khối | Phép tính và mục đích |
 |---|---|
 | Kiểm tra dữ liệu; tính vận tốc và tốc độ góc tại tâm propeller | Kiểm tra vector, mật độ và vận tốc âm thanh là hữu hạn/hợp lệ. Sau đó tính `V_h^b = V_CG/a^b + omega^b cross r_h/CG^b` rồi đổi `V_h` và `omega` sang hệ propeller. Đây là điều kiện dòng tới mà mọi blade element sẽ sử dụng. |
 | Tính sai số cân bằng tại `lambda_min`, `lambda_max` và quét các giá trị ở giữa | Xác định một khoảng `[lambda_L,lambda_U]` sao cho `R(lambda_L)` và `R(lambda_U)` trái dấu. Mỗi lần tính sai số ở đây đều chạy toàn bộ BEMT. |
@@ -179,7 +179,7 @@ flowchart TD
 | Tính `lambda_i` mới bằng Newton; nếu ra ngoài khoảng thì lấy trung điểm | Trước hết dùng `lambda_new=lambda-R/R'`. Nếu đạo hàm không dùng được hoặc `lambda_new` ra ngoài `[lambda_L,lambda_U]`, thay bằng `(lambda_L+lambda_U)/2`. Đây là Newton có giới hạn an toàn bằng phương pháp chia đôi. |
 | Ghi trạng thái hội tụ và số liệu kiểm tra | Lưu `converged/status`, số lượt lặp, số lần tính residual, `lambda_i`, induced velocity, residual cuối, `CT_r_MT`, miền alpha, Mach lớn nhất và các cờ cảnh báo. Các số liệu này dùng để kiểm tra chất lượng phép tính; chúng không phải lực hoặc moment bổ sung. |
 
-Trong tài liệu này, thuật ngữ tiếng Anh `diagnostics` trong tên field C++ có
+Trong tài liệu này, `diagnostics` trong tên field C++ có
 nghĩa là **số liệu kiểm tra/chẩn đoán phép tính**. Nó giúp trả lời các câu hỏi
 như solver có hội tụ không, residual còn bao nhiêu, có vượt miền polar không;
 nó không tham gia cộng vào tải 6-DOF.
@@ -208,17 +208,17 @@ cho 6-DOF nếu caller chưa áp dụng một failure policy có chủ đích.
 
 ```mermaid
 flowchart TD
-    A["Factory tham số Navion/NACA ước lượng"]
-    B["Geometry stations: r/R, chord, pitch"]
-    C["Polar stations: alpha, Cl, Cd"]
-    D["Installation, rotation, inertia và RPM"]
-    E["Grid và inflow solver settings"]
-    F["PropellerParameters"]
-    G["PropellerModel constructor"]
-    H["PropellerParameters.validate"]
-    I{"Mọi ràng buộc hợp lệ?"}
-    J["Model sẵn sàng"]
-    K["Ném invalid_argument"]
+    A["A: Factory tham số Navion/NACA ước lượng"]
+    B["B: Geometry stations: r/R, chord, pitch"]
+    C["C: Polar stations: alpha, Cl, Cd"]
+    D["D: Installation, rotation, inertia và RPM"]
+    E["E: Grid và inflow solver settings"]
+    F["F: PropellerParameters"]
+    G["P: PropellerModel constructor"]
+    H["H: PropellerParameters.validate"]
+    I{"I: Mọi ràng buộc hợp lệ?"}
+    J["J: Model sẵn sàng"]
+    K["K: Ném invalid_argument"]
 
     A --> B --> F
     A --> C --> F
@@ -325,14 +325,14 @@ Nếu `alpha` nằm ngoài miền bảng, code dùng coefficient ở endpoint g�
 
 ```mermaid
 flowchart TD
-    A["V_CG/a body"]
-    B["Body rates p, q, r"]
-    C["Hub position r_h/CG body"]
-    D["V_h body = V_CG/a + omega cross r_h/CG"]
-    E["C_p<-b = transpose of C_b<-p"]
-    F["V_h propeller và omega propeller"]
-    G["lambda_0, mu_y, mu_z, mu và J"]
-    H["HubKinematics"]
+    A["A: V_CG/a body"]
+    B["B: Body rates p, q, r"]
+    C["C: Hub position r_h/CG body"]
+    D["D: V_h body = V_CG/a + omega cross r_h/CG"]
+    E["E: C_p<-b = transpose of C_b<-p"]
+    F["F: V_h propeller và omega propeller"]
+    G["G: lambda_0, mu_y, mu_z, mu và J"]
+    H["H: HubKinematics"]
 
     A --> D
     B --> D
@@ -405,15 +405,15 @@ cross-flow để tính bất đối xứng azimuth.
 
 ```mermaid
 flowchart TD
-    A["Giá trị thử lambda_i"]
-    B["v_i = lambda_i Omega R"]
-    C["Chạy lại toàn bộ BEMT trên lưới psi x r"]
-    D["Tích phân thrust và tính CT_r BE"]
-    E["CT_r MT từ momentum theory"]
-    F["Residual R_lambda = CT_r BE - CT_r MT"]
-    G{"Residual đạt tolerance?"}
-    H["Cập nhật lambda_i bằng Newton hoặc bisection"]
-    I["lambda_i và disk loads nhất quán"]
+    A["A: Giá trị thử lambda_i"]
+    B["B: v_i = lambda_i Omega R"]
+    C["C: Chạy lại toàn bộ BEMT trên lưới psi x r"]
+    D["D: Tích phân thrust và tính CT_r BE"]
+    E["E: CT_r MT từ momentum theory"]
+    F["F: Residual R_lambda = CT_r BE - CT_r MT"]
+    G{"G: Residual đạt tolerance?"}
+    H["H: Cập nhật lambda_i bằng Newton hoặc bisection"]
+    I["I: lambda_i và disk loads nhất quán"]
 
     A --> B --> C --> D --> F
     A --> E --> F
